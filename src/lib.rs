@@ -1,25 +1,20 @@
 use std::{
-    future::Future,
     io::{Read, Write},
     net::{TcpListener, ToSocketAddrs},
-    pin::Pin,
 };
-
-// type RouteFunc = Fn() -> Box<dyn Future<Output = String>>;
-pub trait RouteFunc: Fn() -> Pin<Box<dyn Future<Output = String>>> {}
 
 pub struct Route {
     path: String,
-    func: Box<dyn RouteFunc>,
+    func: Box<dyn Fn() -> String>,
 }
 
 impl Route {
-    pub fn new(path: String, func: impl RouteFunc + 'static) -> Self
-// where
-        // F: RouteFunc,
+    pub fn new<F>(path: String, func: F) -> Self
+    where
+        F: Fn() -> String + 'static,
     {
         Self {
-            func: Box::from(func),
+            func: Box::new(func),
             path,
         }
     }
@@ -40,7 +35,7 @@ impl HttpServer {
         self
     }
 
-    pub async fn run<Addr>(&self, addr: Addr)
+    pub fn run<Addr>(&self, addr: Addr)
     where
         Addr: ToSocketAddrs,
     {
@@ -62,10 +57,7 @@ impl HttpServer {
 
             for route in &self.routes {
                 if path == route.path {
-                    // run the route's function
-                    let response = (route.func)().await;
-
-                    let response_string = format!("HTTP/2 200\r\n\r\n{}", response);
+                    let response_string = format!("HTTP/2 200\r\n\r\n{}", (route.func)());
                     stream.write_all(response_string.as_bytes()).unwrap();
                     continue 'incoming;
                 }
