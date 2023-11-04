@@ -1,41 +1,48 @@
 use std::{
+    future::Future,
     io::{Read, Write},
     net::{TcpListener, ToSocketAddrs},
 };
 
-pub struct Route {
-    path: String,
-    func: Box<dyn Fn() -> String>,
+// pub struct Route {
+//     path: String,
+//     func: Box<dyn Fn() -> String>,
+// }
+
+// impl Route {
+//     pub fn new<F>(path: String, func: F) -> Self
+//     where
+//         F: Fn() -> String + 'static,
+//     {
+//         Self {
+//             func: Box::new(func),
+//             path,
+//         }
+//     }
+// }
+
+pub struct HttpServer<F, Fut>
+where
+    F: Fn(String) -> Fut,
+    Fut: Future<Output = Option<String>>,
+{
+    handler: F,
 }
 
-impl Route {
-    pub fn new<F>(path: String, func: F) -> Self
+impl<F, Fut> HttpServer<F, Fut>
+where
+    F: Fn(String) -> Fut,
+    Fut: Future<Output = Option<String>>,
+{
+    pub fn new(handler: F) -> Self
     where
-        F: Fn() -> String + 'static,
+        F: Fn(String) -> Fut,
+        Fut: Future<Output = Option<String>>,
     {
-        Self {
-            func: Box::new(func),
-            path,
-        }
-    }
-}
-
-pub struct HttpServer {
-    routes: Vec<Route>,
-}
-
-impl HttpServer {
-    pub fn new() -> Self {
-        Self { routes: Vec::new() }
+        Self { handler }
     }
 
-    pub fn add_route(mut self, route: Route) -> Self {
-        self.routes.push(route);
-
-        self
-    }
-
-    pub fn run<Addr>(&self, addr: Addr)
+    pub async fn run<Addr>(&self, addr: Addr)
     where
         Addr: ToSocketAddrs,
     {
@@ -55,12 +62,12 @@ impl HttpServer {
                 }
             };
 
-            for route in &self.routes {
-                if path == route.path {
-                    let response_string = format!("HTTP/2 200\r\n\r\n{}", (route.func)());
-                    stream.write_all(response_string.as_bytes()).unwrap();
-                    continue 'incoming;
-                }
+            let res = (self.handler)(path).await;
+
+            if let Some(http_response) = res {
+                let response_string = format!("HTTP/2 200\r\n\r\n{}", http_response);
+                stream.write_all(response_string.as_bytes()).unwrap();
+                continue 'incoming;
             }
 
             stream
