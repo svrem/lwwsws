@@ -54,7 +54,7 @@ where
             let res = (self.handler)(path).await;
 
             if let Some(http_response) = res {
-                let response_string = format!("HTTP/2 200\r\n\r\n{}", http_response);
+                let response_string = format!("HTTP/3.0 200\r\n\r\n{}", http_response);
 
                 if stream.write_all(response_string.as_bytes()).is_err() {
                     write_500_error(&mut stream).ok();
@@ -71,13 +71,13 @@ where
 }
 
 fn write_404_error(stream: &mut TcpStream) -> Result<(), std::io::Error> {
-    stream.write_all("HTTP/2 404\r\n\r\nNot Found".as_bytes())?;
+    stream.write_all("HTTP/3.0 404\r\n\r\nNot Found".as_bytes())?;
 
     Ok(())
 }
 
 fn write_500_error(stream: &mut TcpStream) -> Result<(), std::io::Error> {
-    stream.write_all("HTTP/2 500\r\n\r\nInternal Server Error".as_bytes())?;
+    stream.write_all("HTTP/3.0 500\r\n\r\nInternal Server Error".as_bytes())?;
 
     Ok(())
 }
