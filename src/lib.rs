@@ -4,23 +4,6 @@ use std::{
     net::{TcpListener, ToSocketAddrs},
 };
 
-// pub struct Route {
-//     path: String,
-//     func: Box<dyn Fn() -> String>,
-// }
-
-// impl Route {
-//     pub fn new<F>(path: String, func: F) -> Self
-//     where
-//         F: Fn() -> String + 'static,
-//     {
-//         Self {
-//             func: Box::new(func),
-//             path,
-//         }
-//     }
-// }
-
 pub struct HttpServer<F, Fut>
 where
     F: Fn(String) -> Fut,
